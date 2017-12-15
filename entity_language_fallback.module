@@ -1,0 +1,90 @@
+<?php
+
+/**
+ * @file
+ * Add fallback languages to entities.
+ */
+
+use Drupal\Core\Form\FormStateInterface;
+use Drupal\language\ConfigurableLanguageInterface;
+use Drupal\language\Entity\ConfigurableLanguage;
+
+/**
+ * Implements hook_language_fallback_candidates_alter()
+ */
+function entity_language_fallback_language_fallback_candidates_alter(array &$candidates, array $context) {
+  $operation = $context['operation'];
+
+  if ($operation == 'entity_upcast' || $operation == 'entity_view') {
+    $attempted_langcode = $context['langcode'];
+    /** @var @var \Drupal\node\NodeInterface $entity */
+    $entity = $context['data'];
+
+    if (is_a($entity, 'Drupal\node\NodeInterface')) {
+      $candidates = [$attempted_langcode => $attempted_langcode];
+      /** @var Drupal\language\Entity\ConfigurableLanguage $language */
+      $language = ConfigurableLanguage::load($attempted_langcode);
+      $fallback_langcodes = $language->getThirdpartySetting('entity_language_fallback', 'fallback_langcodes', []);
+
+      foreach ($fallback_langcodes as $fallback_langcode) {
+        if (!empty($fallback_langcode) && $attempted_langcode != $fallback_langcode && !in_array($fallback_langcode, $candidates)) {
+          $candidates[$fallback_langcode] = $fallback_langcode;
+        }
+      }
+    }
+  }
+}
+
+/**
+ * Implements hook_form_FORM_ID_alter()
+ */
+function entity_language_fallback_form_language_admin_edit_form_alter(&$form, FormStateInterface $form_state) {
+  /** @var Drupal\language\Entity\ConfigurableLanguage $this_language */
+  $this_language = $form_state->getFormObject()->getEntity();
+
+  $languages = Drupal::languageManager()->getLanguages();
+  $options = [];
+  foreach($languages as $language) {
+    // Only include this language if its not itself.
+    if ($language->getId() != $this_language->getId()) {
+      $options[$language->getId()] = $language->getName();
+    }
+  }
+
+  $form['entity_language_fallback'] = [
+    '#title' => t('Entity fallback language'),
+    '#description' => t('Choose one or more fallback languages in prioritized order. The languages are used as fallback in entity view. .'),
+    '#type' => 'details',
+    '#open' => TRUE,
+    '#tree' => TRUE,
+  ];
+
+  // Creating one priority field per available language.
+  $default_values = $this_language->getThirdPartySetting('entity_language_fallback', 'fallback_langcodes', []);
+  for ($i = 0; $i < count($options); $i++) {
+    $form['entity_language_fallback'][$i] = [
+      '#type' => 'select',
+      '#title' => t('Priority @priority', ['@priority' => $i + 1]),
+      '#description' => t('Choose the language used as priority @priority fallback language.', ['@priority' => $i + 1]),
+      '#options' => $options,
+      '#default_value' => !empty($default_values[$i]) ? $default_values[$i] : '',
+      '#empty_option' => t('-None-'),
+      '#tree' => TRUE,
+    ];
+  }
+
+  $form['#entity_builders'][] = 'entity_language_fallback_form_language_admin_edit_form_builder';
+}
+
+/**
+ * Entity builder for the language form entity_language_fallback options.
+ *
+ * @see entity_language_fallback_form_language_admin_edit_form_alter()
+ */
+function entity_language_fallback_form_language_admin_edit_form_builder($entity_type, ConfigurableLanguageInterface $this_language, &$form, FormStateInterface $form_state) {
+  $this_language->setThirdPartySetting(
+    'entity_language_fallback',
+    'fallback_langcodes',
+    $form_state->getValue('entity_language_fallback')
+  );
+}
