@@ -4,8 +4,6 @@ CONTENTS OF THIS FILE
  * Requirements
  * Installation
  * Configuration
- * CLI
- * Developers
  * Troubleshooting
  * Sponsors
  * Maintainers
