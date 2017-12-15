@@ -53,7 +53,7 @@ function entity_language_fallback_form_language_admin_edit_form_alter(&$form, Fo
 
   $form['entity_language_fallback'] = [
     '#title' => t('Entity fallback language'),
-    '#description' => t('Choose one or more fallback languages in prioritized order. The languages are used as fallback in entity view. .'),
+    '#description' => t('Choose one or more fallback languages in prioritized order. The languages are used as fallback in entity view.'),
     '#type' => 'details',
     '#open' => TRUE,
     '#tree' => TRUE,
